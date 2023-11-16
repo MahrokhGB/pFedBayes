@@ -5,24 +5,33 @@ from utils import argparse
 from utils.plot_utils import *
 import torch
 
-torch.manual_seed(1)
-
 def main(dataset, algorithm, model, batch_size, learning_rate, beta, lamda, num_glob_iters,
          local_epochs, optimizer, numusers, K, personal_learning_rate, times, device,
-         weight_scale, rho_offset, zeta):
+         weight_scale, rho_offset, zeta, seed):
+
+    torch.manual_seed(seed)
+
+    output_dim=64 if dataset.startswith('emnist') else 10
+
     post_fix_str = 'plr_{}_lr_{}'.format(personal_learning_rate, learning_rate)
     model_path = []
     for i in range(times):
         print("---------------Running time:------------", i)
         if model == "pbnn":
-            if dataset == "Mnist":
-                model = pBNN(784, 100, 10, device, weight_scale, rho_offset, zeta).to(device), model
+            if dataset=="Mnist" or 'emnist' in dataset:
+                model = pBNN(
+                    input_dim=784, hidden_dim=100, device=device, output_dim=output_dim,
+                    weight_scale=weight_scale, rho_offset=rho_offset, zeta=zeta
+                ).to(device), model
             else:
                 model = pBNN(3072, 100, 10, device, weight_scale, rho_offset, zeta).to(device), model
 
-        server = pFedBayes(dataset, algorithm, model, batch_size, learning_rate, beta, lamda, num_glob_iters,
-                           local_epochs, optimizer, numusers, i, device, personal_learning_rate,
-                           post_fix_str=post_fix_str)
+        server = pFedBayes(
+            dataset=dataset, algorithm=algorithm, model=model, batch_size=batch_size,
+            learning_rate=learning_rate, beta=beta, lamda=lamda, num_glob_iters=num_glob_iters,
+            local_epochs=local_epochs, optimizer=optimizer, num_users=numusers, times=i,
+            device=device, personal_learning_rate=personal_learning_rate, seed=seed,
+            post_fix_str=post_fix_str, output_dim=output_dim)
 
         model_path.append(server.train())
         _, nums_list, acc_list, _ = server.testpFedbayes()
@@ -35,10 +44,12 @@ def main(dataset, algorithm, model, batch_size, learning_rate, beta, lamda, num_
 
 
 def run():
+    # NOTE: parser doesn't work. forced dataset to be FEMNIST
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="Mnist", choices=["Mnist"])
+    parser.add_argument("--dataset", type=str, default="emnist4", choices=["Mnist", "femnist_reduced", "femnist_med", "emnist4"]) # TODO default="Mnist",
+    parser.add_argument("--seed", type=int, default="0")
     parser.add_argument("--model", type=str, default="pbnn", choices=["pbnn"])
-    parser.add_argument("--batch_size", type=int, default=100)
+    parser.add_argument("--batch_size", type=int, default=100) # NOTE: default=100, use 20 for FEMNIST
     parser.add_argument("--learning_rate", type=float, default=0.001,
                         help="Local learning rate")
     parser.add_argument("--weight_scale", type=float, default=0.1)
@@ -47,21 +58,22 @@ def run():
     parser.add_argument("--beta", type=float, default=1.0,
                         help="Average moving parameter for pFedMe")
     parser.add_argument("--lamda", type=int, default=15, help="Regularization term")
-    parser.add_argument("--num_global_iters", type=int, default=10)
+    parser.add_argument("--num_global_iters", type=int, default=10) # NOTE: default=10, used 100 for FEMNIST
     parser.add_argument("--local_epochs", type=int, default=20)
     parser.add_argument("--optimizer", type=str, default="SGD")
     parser.add_argument("--algorithm", type=str, default="pFedBayes",
                         choices=["pFedMe", "FedAvg", "FedBayes"])
-    parser.add_argument("--numusers", type=int, default=10, help="Number of Users per round")
+    parser.add_argument("--numusers", type=int, default=10, help="Number of Users per round") # TODO: default=10, used 40 for FEMNIST
     parser.add_argument("--K", type=int, default=5, help="Computation steps")
     parser.add_argument("--personal_learning_rate", type=float, default=0.001,
                         help="Persionalized learning rate to caculate theta aproximately using K steps")
     parser.add_argument("--times", type=int, default=1, help="running time")
     args = parser.parse_args()
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-
+    print('device', device)
     print("=" * 80)
     print("Summary of training process:")
+    print("Seed: {}".format(args.seed))
     print("Algorithm: {}".format(args.algorithm))
     print("Batch size: {}".format(args.batch_size))
     print("Learing rate       : {}".format(args.learning_rate))
@@ -91,7 +103,8 @@ def run():
         device=device,
         weight_scale=args.weight_scale,
         rho_offset=args.rho_offset,
-        zeta=args.zeta
+        zeta=args.zeta,
+        seed=args.seed
     )
 
 

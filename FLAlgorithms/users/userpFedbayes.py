@@ -6,7 +6,7 @@ from FLAlgorithms.users.userbase import User
 
 class UserpFedBayes(User):
     def __init__(self, numeric_id, train_data, test_data, model, batch_size, learning_rate, beta, lamda,
-                 local_epochs, optimizer, personal_learning_rate, device, output_dim=10):
+                 local_epochs, optimizer, personal_learning_rate, device, output_dim):
         super().__init__(numeric_id, train_data, test_data, model[0], batch_size, learning_rate, beta, lamda,
                          local_epochs, device, output_dim=output_dim)
 
@@ -32,11 +32,16 @@ class UserpFedBayes(User):
         self.model.train()
         self.personal_model.train()
 
-        for epoch in range(1, self.local_epochs + 1):
-
+        for epoch in range(1, self.local_epochs+ 1):
             X, Y = self.get_next_train_batch()
-            batch_X = Variable(X.view(self.batch_size, -1))
-            batch_Y = Variable(Y.view(self.batch_size, -1))
+            if X.shape[0]< self.batch_size:     # TODO: added due to errors
+                # print('[INFO] discarded batch')
+                # continue
+                batch_X = Variable(X.view(X.shape[0], -1))
+                batch_Y = Variable(Y.view(X.shape[0], -1))
+            else:
+                batch_X = Variable(X.view(self.batch_size, -1))
+                batch_Y = Variable(Y.view(self.batch_size, -1))
             label_one_hot = F.one_hot(batch_Y, num_classes=self.output_dim).squeeze(dim=1)
 
             for r in range(1, Round + 1):

@@ -127,3 +127,8 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+data/femnist_med/raw/*
+data/femnist_reduced/raw/*
+data/*
+
+results/*

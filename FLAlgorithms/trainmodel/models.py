@@ -5,7 +5,6 @@ import torch.nn.functional as F
 from torch.distributions.normal import Normal
 from torch.distributions.kl import kl_divergence
 
-
 class pBNN(nn.Module):
     def __init__(self, input_dim, hidden_dim, output_dim, device=torch.device('cpu'),
                  weight_scale=0.1, rho_offset=-3, zeta=10):

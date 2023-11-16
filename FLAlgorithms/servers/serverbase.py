@@ -7,7 +7,7 @@ from torch.nn import Module
 
 class Server:
     def __init__(self, dataset,algorithm, model, batch_size, learning_rate ,beta, lamda,
-                 num_glob_iters, local_epochs, optimizer, num_users, times, device):
+                 num_glob_iters, local_epochs, optimizer, num_users, times, device, seed):
 
         # Set up the main attributes
         self.dataset = dataset
@@ -25,7 +25,8 @@ class Server:
         self.algorithm = algorithm
         self.rs_train_acc, self.rs_train_loss, self.rs_glob_acc, self.rs_per_acc, self.rs_train_acc_per, self.rs_train_loss_per, self.rs_glob_acc_per = [], [], [], [], [], [], []
         self.times = times
-        
+        np.random.seed(seed)
+
     def aggregate_grads(self):
         assert (self.users is not None and len(self.users) > 0)
         for param in self.model.parameters():
@@ -74,14 +75,14 @@ class Server:
 
     def model_exists(self):
         return os.path.exists(os.path.join("models", self.dataset, "server" + ".pt"))
-    
+
     def select_users(self, round, num_users):
         '''selects num_clients clients weighted by number of samples from possible_clients
         Args:
             num_clients: number of clients to select; default 20
                 note that within function, num_clients is set to
                 min(num_clients, len(possible_clients))
-        
+
         Return:
             list of selected clients objects
         '''
@@ -116,10 +117,10 @@ class Server:
             self.add_parameters(user, user.train_samples / total_train)
             #self.add_parameters(user, 1 / len(self.selected_users))
 
-        # aaggregate avergage model with previous model using parameter beta 
+        # aaggregate avergage model with previous model using parameter beta
         for pre_param, param in zip(previous_param, self.model.parameters()):
             param.data = (1 - self.beta)*pre_param.data + self.beta*param.data
-            
+
     # Save loss, accurancy to h5 fiel
     def save_results(self, post_fix_str):
         alg = self.dataset + "_" + self.algorithm
@@ -135,7 +136,7 @@ class Server:
                 hf.create_dataset('rs_train_acc', data=self.rs_train_acc)
                 hf.create_dataset('rs_train_loss', data=self.rs_train_loss)
                 hf.close()
-        
+
         # store persionalized value
         alg = self.dataset + "_" + self.algorithm + "_p"
         alg = alg  + "_" + str(self.learning_rate) + "_" + str(self.beta) + "_" + str(self.lamda) + "_" + str(self.num_users) + "u" + "_" + str(self.batch_size) + "b"+ "_" + str(self.local_epochs)
@@ -229,11 +230,11 @@ class Server:
         tot_correct = []
         losses = []
         for c in self.users:
-            ct, cl, ns = c.train_error_and_loss() 
+            ct, cl, ns = c.train_error_and_loss()
             tot_correct.append(ct*1.0)
             num_samples.append(ns)
             losses.append(cl*1.0)
-        
+
         ids = [c.id for c in self.users]
         #groups = [c.group for c in self.clients]
 
@@ -316,11 +317,11 @@ class Server:
         tot_correct = []
         losses = []
         for c in self.users:
-            ct, cl, ns = c.train_error_and_loss_persionalized_model() 
+            ct, cl, ns = c.train_error_and_loss_persionalized_model()
             tot_correct.append(ct*1.0)
             num_samples.append(ns)
             losses.append(cl*1.0)
-        
+
         ids = [c.id for c in self.users]
         #groups = [c.group for c in self.clients]
 
@@ -342,7 +343,7 @@ class Server:
         print("Average Global Trainning Loss: ",train_loss)
 
     def evaluate_personalized_model(self):
-        stats = self.test_persionalized_model()  
+        stats = self.test_persionalized_model()
         stats_train = self.train_error_and_loss_persionalized_model()
         glob_acc = np.sum(stats[2])*1.0/np.sum(stats[1])
         train_acc = np.sum(stats_train[2])*1.0/np.sum(stats_train[1])
@@ -360,7 +361,7 @@ class Server:
         for c in self.users:
             c.train_one_step()
 
-        stats = self.test()  
+        stats = self.test()
         stats_train = self.train_error_and_loss()
 
         # set local model back to client for training process.

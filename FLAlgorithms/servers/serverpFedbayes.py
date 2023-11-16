@@ -10,16 +10,27 @@ import numpy as np
 # Implementation for FedAvg Server
 class pFedBayes(Server):
     def __init__(self, dataset,algorithm, model, batch_size, learning_rate, beta, lamda, num_glob_iters,
-                 local_epochs, optimizer, num_users, times, device, personal_learning_rate,
-                 output_dim=10, post_fix_str=''):
-        super().__init__(dataset, algorithm, model[0], batch_size, learning_rate, beta, lamda, num_glob_iters,
-                         local_epochs, optimizer, num_users, times, device)
+                 local_epochs, optimizer, num_users, times, device, personal_learning_rate, seed,
+                 output_dim, post_fix_str=''):
+        super().__init__(
+            dataset=dataset, algorithm=algorithm, model=model[0],
+            batch_size=batch_size, learning_rate=learning_rate, beta=beta,
+            lamda=lamda, num_glob_iters=num_glob_iters, local_epochs=local_epochs,
+            optimizer=optimizer, num_users=num_users, times=times, device=device, seed=seed
+        )
 
         # Initialize data for all  users
         data = read_data(dataset)
         self.personal_learning_rate = personal_learning_rate
         self.post_fix_str = post_fix_str
-        total_users = len(data[0])
+        if data[0] is not None:
+            total_users = len(data[0])
+        elif dataset.startswith('femnist'):
+            total_users = 40
+        elif dataset.startswith('emnist'):
+            total_users = 80
+        else:
+            raise NotImplementedError
         print('clients initializting...')
         for i in tqdm(range(total_users), total=total_users):
             id, train, test = read_user_data(i, data, dataset, device)
@@ -27,7 +38,7 @@ class pFedBayes(Server):
                                  personal_learning_rate, device, output_dim=output_dim)
             self.users.append(user)
             self.total_train_samples += user.train_samples
-            
+
         print("Number of users / total users:", num_users, " / " ,total_users)
         print("Finished creating FedAvg server.")
 
