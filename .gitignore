@@ -132,3 +132,4 @@ data/femnist_reduced/raw/*
 data/*
 
 results/*
+models/emnist4/*

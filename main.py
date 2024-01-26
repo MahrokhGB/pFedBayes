@@ -11,7 +11,7 @@ def main(dataset, algorithm, model, batch_size, learning_rate, beta, lamda, num_
 
     torch.manual_seed(seed)
 
-    output_dim=64 if dataset.startswith('emnist') else 10
+    output_dim=62 if dataset.startswith('emnist') else 10
 
     post_fix_str = 'plr_{}_lr_{}'.format(personal_learning_rate, learning_rate)
     model_path = []
@@ -44,21 +44,23 @@ def main(dataset, algorithm, model, batch_size, learning_rate, beta, lamda, num_
 
 
 def run():
-    # NOTE: parser doesn't work. forced dataset to be FEMNIST
+    # NOTE: parser doesn't work. forced dataset to be DATASET
+    DATASET="emnist4"
+    RANDOM_SEED="0"
     parser = argparse.ArgumentParser()
-    parser.add_argument("--dataset", type=str, default="emnist4", choices=["Mnist", "femnist_reduced", "femnist_med", "emnist4"]) # TODO default="Mnist",
-    parser.add_argument("--seed", type=int, default="0")
+    parser.add_argument("--dataset", type=str, default=DATASET, choices=["Mnist", "femnist_reduced", "femnist_med", "emnist4"]) # TODO default="Mnist",
+    parser.add_argument("--seed", type=int, default=RANDOM_SEED)
     parser.add_argument("--model", type=str, default="pbnn", choices=["pbnn"])
     parser.add_argument("--batch_size", type=int, default=100) # NOTE: default=100, use 20 for FEMNIST
     parser.add_argument("--learning_rate", type=float, default=0.001,
                         help="Local learning rate")
-    parser.add_argument("--weight_scale", type=float, default=0.1)
+    parser.add_argument("--weight_scale", type=float, default=0.01) # NOTE: was 0.1
     parser.add_argument("--rho_offset", type=int, default=-3)
-    parser.add_argument("--zeta", type=int, default=10)
+    parser.add_argument("--zeta", type=int, default=10)# NOTE: doesn't change anything
     parser.add_argument("--beta", type=float, default=1.0,
                         help="Average moving parameter for pFedMe")
-    parser.add_argument("--lamda", type=int, default=15, help="Regularization term")
-    parser.add_argument("--num_global_iters", type=int, default=10) # NOTE: default=10, used 100 for FEMNIST
+    parser.add_argument("--lamda", type=int, default=5, help="Regularization term") # TODO: default = 15
+    parser.add_argument("--num_global_iters", type=int, default=100) # NOTE: default=10, used 100 for FEMNIST
     parser.add_argument("--local_epochs", type=int, default=20)
     parser.add_argument("--optimizer", type=str, default="SGD")
     parser.add_argument("--algorithm", type=str, default="pFedBayes",
@@ -85,27 +87,32 @@ def run():
     print("Local Model       : {}".format(args.model))
     print("=" * 80)
 
-    return main(
-        dataset=args.dataset,
-        algorithm=args.algorithm,
-        model=args.model,
-        batch_size=args.batch_size,
-        learning_rate=args.learning_rate,
-        beta=args.beta,
-        lamda=args.lamda,
-        num_glob_iters=args.num_global_iters,
-        local_epochs=args.local_epochs,
-        optimizer=args.optimizer,
-        numusers=args.numusers,
-        K=args.K,
-        personal_learning_rate=args.personal_learning_rate,
-        times=args.times,
-        device=device,
-        weight_scale=args.weight_scale,
-        rho_offset=args.rho_offset,
-        zeta=args.zeta,
-        seed=args.seed
-    )
+    for beta in [0.01, 0.1, 0.5, 1, 5, 10]:
+        for lamda in [5, 15, 25, 50]:
+            print('beta = ' + str(beta))
+            print('lamda = ' + str(lamda))
+            main(
+                dataset=args.dataset,
+                algorithm=args.algorithm,
+                model=args.model,
+                batch_size=args.batch_size,
+                learning_rate=args.learning_rate,
+                beta=beta, lamda=lamda,# TODO
+                # beta=args.beta, TODO
+                # lamda=args.lamda, TODO
+                num_glob_iters=args.num_global_iters,
+                local_epochs=args.local_epochs,
+                optimizer=args.optimizer,
+                numusers=args.numusers,
+                K=args.K,
+                personal_learning_rate=args.personal_learning_rate,
+                times=args.times,
+                device=device,
+                weight_scale=args.weight_scale,
+                rho_offset=args.rho_offset,
+                zeta=args.zeta,
+                seed=args.seed
+            )
 
 
 if __name__ == "__main__":
